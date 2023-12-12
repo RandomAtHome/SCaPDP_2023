@@ -10,6 +10,7 @@ double maxeps = 0.1e-7;
 int itmax = 100;
 int i, j, k;
 double eps;
+double eps_errors[N];
 double A[N][N], B[N][N];
 
 void relax();
@@ -26,7 +27,7 @@ int main(int an, char **as) {
     init();
     for (it = 1; it <= itmax; it++) {
         eps = 0.;
-#pragma omp parallel
+#pragma omp parallel shared(A, B, eps_errors)
         {
             relax();
             resid();
@@ -48,7 +49,7 @@ void init() {
 }
 
 void relax() {
-#pragma omp for collapse(2)
+#pragma omp for schedule(static) private(i, j)
     for (j = 2; j <= N - 3; j++)
         for (i = 2; i <= N - 3; i++) {
             B[i][j] = (A[i - 2][j] + A[i - 1][j] + A[i + 2][j] + A[i + 1][j] + A[i][j - 2] + A[i][j - 1] + A[i][j + 2] +
@@ -57,14 +58,23 @@ void relax() {
 }
 
 void resid() {
-#pragma omp for collapse(2) reduction(max:eps)
-    for (j = 1; j <= N - 2; j++)
-        for (i = 1; i <= N - 2; i++) {
+#pragma omp for schedule(static)
+    for (i = 1; i <= N - 2; i++) {
+        double l_eps = 0.;
+        for (j = 1; j <= N - 2; j++) {
             double e;
             e = fabs(A[i][j] - B[i][j]);
             A[i][j] = B[i][j];
-            eps = Max(eps, e);
+            l_eps = Max(l_eps, e);
         }
+        eps_errors[i] = l_eps;
+    }
+#pragma omp master
+    {
+        for (i = 1; i <= N - 2; i++) {
+            eps = Max(eps, eps_errors[i]);
+        }
+    }
 }
 
 void verify() {
