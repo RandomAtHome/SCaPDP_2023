@@ -5,8 +5,7 @@
 double bench_t_start, bench_t_end;
 
 static
-double rtclock()
-{
+double rtclock() {
     return omp_get_wtime();
 }
 
@@ -19,7 +18,7 @@ void bench_timer_stop() {
 }
 
 void bench_timer_print() {
-    printf("Time in seconds = %0.6lf\n", bench_t_end - bench_t_start);
+    printf("%lf\n", bench_t_end - bench_t_start);
 }
 
 
@@ -60,9 +59,9 @@ void kernel_heat_3d(int tsteps,
     int t, i, j, k;
 
     for (t = 1; t <= TSTEPS; t++) {
-#pragma omp parallel
+#pragma omp parallel private(i, j, k) shared(t, A, B, n) default(none)
         {
-#pragma omp for collapse(3)
+#pragma omp for schedule(static)
             for (i = 1; i < n - 1; i++) {
                 for (j = 1; j < n - 1; j++) {
                     for (k = 1; k < n - 1; k++) {
@@ -73,7 +72,7 @@ void kernel_heat_3d(int tsteps,
                     }
                 }
             }
-#pragma omp for collapse(3)
+#pragma omp for schedule(static)
             for (i = 1; i < n - 1; i++) {
                 for (j = 1; j < n - 1; j++) {
                     for (k = 1; k < n - 1; k++) {

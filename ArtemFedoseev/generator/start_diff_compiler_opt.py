@@ -6,9 +6,13 @@ import json
 import subprocess
 
 # initial params
-n_tr = 5
+n_tr = 3
 prog_names = ["var11_for", "var11_task"]
-compile_prefixes = ["gcc -fopenmp -std=c99", "clang -fopenmp -std=c99", "pgcc -mp", "icc -qopenmp -std=c99"]
+compile_prefixes = ["gcc -fopenmp -std=c99",
+                    # "clang -fopenmp -std=c99",
+                    # "pgcc -mp",
+                    # "icc -qopenmp -std=c99",
+                    ]
 compiler_optimizers = ["O0", "O1", "O2", "O3"]
 
 # store our pc env

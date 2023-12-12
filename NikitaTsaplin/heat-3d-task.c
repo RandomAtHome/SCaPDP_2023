@@ -18,7 +18,7 @@ void bench_timer_stop() {
 }
 
 void bench_timer_print() {
-    printf("Time in seconds = %0.6lf\n", bench_t_end - bench_t_start);
+    printf("%lf\n", bench_t_end - bench_t_start);
 }
 
 
@@ -58,12 +58,12 @@ void kernel_heat_3d(int tsteps,
                     double B[n][n][n]) {
     int t, i, j, k;
 
-#pragma omp parallel
+#pragma omp parallel shared(A, B, n)
     {
 #pragma omp master
         {
-        for (t = 1; t <= TSTEPS; t++) {
-#pragma omp taskloop collapse(3)
+            for (t = 1; t <= TSTEPS; t++) {
+#pragma omp taskloop private(i, j, k)
                 for (i = 1; i < n - 1; i++) {
                     for (j = 1; j < n - 1; j++) {
                         for (k = 1; k < n - 1; k++) {
@@ -74,7 +74,7 @@ void kernel_heat_3d(int tsteps,
                         }
                     }
                 }
-#pragma omp taskloop collapse(3)
+#pragma omp taskloop private(i, j, k)
                 for (i = 1; i < n - 1; i++) {
                     for (j = 1; j < n - 1; j++) {
                         for (k = 1; k < n - 1; k++) {

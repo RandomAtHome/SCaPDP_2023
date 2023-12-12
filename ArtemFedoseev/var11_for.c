@@ -1,10 +1,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <omp.h>
 
-#define  Max(a, b) ((a)>(b)?(a):(b))
+#define Max(a, b) ((a)>(b)?(a):(b))
 
-#define  N   ((1 << 12) + 2)
+#define N   ((1 << 12) + 2)
 double maxeps = 0.1e-7;
 int itmax = 100;
 int i, j, k;
@@ -21,6 +22,7 @@ void verify();
 
 int main(int an, char **as) {
     int it;
+    double start_time = omp_get_wtime();
     init();
     for (it = 1; it <= itmax; it++) {
         eps = 0.;
@@ -29,10 +31,11 @@ int main(int an, char **as) {
             relax();
             resid();
         }
-        printf("it=%4i   eps=%f\n", it, eps);
+//        printf("it=%4i   eps=%f\n", it, eps);
         if (eps < maxeps) break;
     }
     verify();
+    printf("%lf\n", omp_get_wtime() - start_time);
     return 0;
 }
 

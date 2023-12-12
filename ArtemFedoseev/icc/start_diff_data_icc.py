@@ -24,12 +24,13 @@ def change_code(path, data):
 n_tr = 3
 prog_names = ["var11_for", "var11_task"]
 compile_prefixes = [
-                    # "icc -qopenmp -std=c99 -O3",
-                    "gcc -fopenmp -std=c99 -O3",
+                    "icc -qopenmp -std=c99 -O3",
+                    # "gcc -fopenmp -std=c99 -O3",
                     # "clang -fopenmp -std=c99 -O3",
                     # "pgcc -mp -O3",
                     ]
-data_sizes = ["((1<<10)+2)", "((1<<11)+2)", "((1<<12)+2)", "((1<<13)+2)"]
+# data_sizes = ["((1<<10)+2)", "((1<<11)+2)", "((1<<12)+2)", "((1<<13)+2)"]
+data_sizes = ["1026", "2050", "4098", "8194"]
 num_threads = [1, 2, 4, 8]
 
 # store our pc env
@@ -48,19 +49,6 @@ for prog_name in prog_names:
         for data_size in data_sizes:
             data_dict[prog_name][compile_prefix.split()[0]][eval(data_size)] = {}
 
-            # change data size
-            change_code("{0}.c".format(prog_name), data_size)
-
-            proc = subprocess.Popen(
-                "{0} {1}.c -o {1}".format(compile_prefix, prog_name),
-                # base args
-                shell=True,
-                executable="/bin/bash",
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            stdout, stderr = proc.communicate()
-
             for num_thread in num_threads:
                 data_dict[prog_name][compile_prefix.split()[0]][eval(data_size)][num_thread] = -1
 
@@ -70,7 +58,7 @@ for prog_name in prog_names:
                 full_time = 0
                 for _ in range(n_tr):
                     proc = subprocess.Popen(
-                        "./{0}".format(prog_name),
+                        "./{0}_{1}".format(prog_name, data_size),
                         env=base_env,
                         # base args
                         shell=True,
@@ -85,5 +73,5 @@ for prog_name in prog_names:
                 print("RUN COMMAND: {0} {1}.c -o {1} with DATA SIZE: {2} and NUM_THREADS: {3} --- avgt: {4}".format(
                     compile_prefix, prog_name, eval(data_size), num_thread, full_time / n_tr))
 
-with open("diff_data.json", "w") as fp:
+with open("diff_data_icc.json", "w") as fp:
     json.dump(data_dict, fp, indent=4)

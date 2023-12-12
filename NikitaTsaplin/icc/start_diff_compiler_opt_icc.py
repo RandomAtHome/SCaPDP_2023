@@ -6,12 +6,13 @@ import json
 import subprocess
 
 # initial params
-n_tr = 5
+n_tr = 3
 prog_names = ["heat-3d-for", "heat-3d-task"]
-compile_prefixes = ["gcc -fopenmp -std=c99",
+compile_prefixes = [
+    # "gcc -fopenmp -std=c99",
                     # "clang -fopenmp -std=c99",
                     # "pgcc -mp",
-                    # "icc -qopenmp -std=c99",
+                    "icc -qopenmp -std=c99",
                     ]
 compiler_optimizers = ["O0", "O1", "O2", "O3"]
 
@@ -32,16 +33,6 @@ for prog_name in prog_names:
         for compiler_optimizer in compiler_optimizers:
             data_dict[prog_name][compile_prefix.split()[0]][compiler_optimizer] = -1.0
 
-            proc = subprocess.Popen(
-                "{0} -{1} {2}.c heat-3d.h -o {2}_{1}".format(compile_prefix, compiler_optimizer, prog_name),
-                # base args
-                shell=True,
-                executable="/bin/bash",
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            stdout, stderr = proc.communicate()
-
             full_time = 0
             for _ in range(n_tr):
                 proc = subprocess.Popen(
@@ -57,9 +48,8 @@ for prog_name in prog_names:
                 full_time += float(stdout)
 
             data_dict[prog_name][compile_prefix.split()[0]][compiler_optimizer] = full_time / n_tr
-            print("RUN COMMAND: {0} -{1} {2}.c heat-3d-h -o {2}_{1} --- avgt: {3}".format(compile_prefix,
-                                                                                          compiler_optimizer, prog_name,
-                                                                                          full_time / n_tr))
+            print("RUN COMMAND: {0} -{1} {2}.c -o {2}_{1} --- avgt: {3}".format(compile_prefix, compiler_optimizer,
+                                                                                prog_name, full_time / n_tr))
 
-with open("diff_compiler_opt.json", "w") as fp:
+with open("diff_compiler_opt_icc.json", "w") as fp:
     json.dump(data_dict, fp, indent=4)

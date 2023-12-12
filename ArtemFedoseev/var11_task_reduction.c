@@ -33,7 +33,7 @@ int main(int an, char **as) {
                 relax();
                 resid();
 //                printf("it=%4i   eps=%f\n", it, eps);
-//                if (eps < maxeps) break;
+                if (eps < maxeps) break;
             }
         }
     }
@@ -51,7 +51,7 @@ void init() {
 }
 
 void relax() {
-#pragma omp taskloop collapse(2)
+#pragma omp taskloop
     for (j = 2; j <= N - 3; j++)
         for (i = 2; i <= N - 3; i++) {
             B[i][j] = (A[i - 2][j] + A[i - 1][j] + A[i + 2][j] + A[i + 1][j] + A[i][j - 2] + A[i][j - 1] +
@@ -61,7 +61,7 @@ void relax() {
 }
 
 void resid() {
-#pragma omp taskloop collapse(2) reduction(max:eps)
+#pragma omp taskloop reduction(max:eps)
     for (j = 1; j <= N - 2; j++)
         for (i = 1; i <= N - 2; i++) {
             double e;

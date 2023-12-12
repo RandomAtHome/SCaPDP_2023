@@ -8,10 +8,11 @@ import subprocess
 # initial params
 n_tr = 5
 prog_names = ["heat-3d-for", "heat-3d-task"]
-compile_prefixes = ["gcc -fopenmp -std=c99 -O3",
+compile_prefixes = [
+    # "gcc -fopenmp -std=c99 -O3",
                     # "clang -fopenmp -std=c99 -O3",
                     # "pgcc -mp -O3",
-                    # "icc -qopenmp -std=c99 -O3"
+                    "icc -qopenmp -std=c99 -O3"
                     ]
 data_sizes = ["MINI_DATASET",
               "SMALL_DATASET",
@@ -36,16 +37,6 @@ for prog_name in prog_names:
         for data_size in data_sizes:
             data_dict[prog_name][compile_prefix.split()[0]][data_size] = {}
 
-            proc = subprocess.Popen(
-                "{0} {1}.c heat-3d.h -D{2} -o {1}".format(compile_prefix, prog_name, data_size),
-                # base args
-                shell=True,
-                executable="/bin/bash",
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            stdout, stderr = proc.communicate()
-
             for num_thread in num_threads:
                 data_dict[prog_name][compile_prefix.split()[0]][data_size][num_thread] = -1
 
@@ -55,7 +46,7 @@ for prog_name in prog_names:
                 full_time = 0
                 for _ in range(n_tr):
                     proc = subprocess.Popen(
-                        "./{0}".format(prog_name),
+                        "./{0}_{1}".format(prog_name, data_size),
                         env=base_env,
                         # base args
                         shell=True,
@@ -67,9 +58,8 @@ for prog_name in prog_names:
                     full_time += float(stdout)
 
                 data_dict[prog_name][compile_prefix.split()[0]][data_size][num_thread] = full_time / n_tr
-                print(
-                    "RUN COMMAND: {0} {1}.c heat-3d.h -D{5} -o {1} with DATA SIZE: {2} and NUM_THREADS: {3} --- avgt: {4}".format(
-                        compile_prefix, prog_name, data_size, num_thread, full_time / n_tr, data_size))
+                print("RUN COMMAND: {0} {1}.c -o {1} with DATA SIZE: {2} and NUM_THREADS: {3} --- avgt: {4}".format(
+                    compile_prefix, prog_name, data_size, num_thread, full_time / n_tr))
 
-with open("diff_data.json", "w") as fp:
+with open("diff_data_icc.json", "w") as fp:
     json.dump(data_dict, fp, indent=4)
