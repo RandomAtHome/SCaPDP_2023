@@ -92,5 +92,5 @@ void verify() {
             s = s + A[i][j] * (i + 1) * (j + 1) / (N * N);
         }
     }
-    printf("  S = %f\n", s);
+//    printf("  S = %f\n", s);
 }
