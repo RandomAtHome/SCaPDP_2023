@@ -5,12 +5,11 @@
 
 #define  Max(a, b) ((a)>(b)?(a):(b))
 
-#define N   ((1 << 12) + 2)
+#define N   ((1 << 10) + 2)
 const double maxeps = 0.1e-7;
 const int itmax = 100;
 double eps;
 double A[N][N], B[N][N];
-double eps_errors[N];
 
 void relax();
 
@@ -65,21 +64,21 @@ void resid() {
 #pragma omp taskgroup
     {
         for (int i = 1; i <= N - 2; i++) {
-#pragma omp task default(none) shared(eps, A, B, eps_errors) firstprivate(i)
+#pragma omp task default(none) shared(eps, A, B) firstprivate(i)
             {
-                double l_eps = 0.;
+                double l_eps = 0;
                 for (int j = 1; j <= N - 2; j++) {
                     double e;
                     e = fabs(A[i][j] - B[i][j]);
                     A[i][j] = B[i][j];
                     l_eps = Max(l_eps, e);
                 }
-                eps_errors[i] = l_eps;
+#pragma omp critical
+                {
+                    eps = Max(eps, l_eps);
+                }
             }
         }
-    }
-    for (int i = 1; i <= N - 2; i++) {
-        eps = Max(eps, eps_errors[i]);
     }
 }
 
@@ -91,5 +90,5 @@ void verify() {
             s = s + A[i][j] * (i + 1) * (j + 1) / (N * N);
         }
     }
-//    printf("  S = %f\n", s);
+    printf("  S = %f\n", s);
 }

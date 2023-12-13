@@ -10,7 +10,6 @@ double maxeps = 0.1e-7;
 int itmax = 100;
 int i, j, k;
 double eps;
-double eps_errors[N];
 double A[N][N], B[N][N];
 
 void relax();
@@ -27,7 +26,7 @@ int main(int an, char **as) {
     init();
     for (it = 1; it <= itmax; it++) {
         eps = 0.;
-#pragma omp parallel shared(A, B, eps_errors)
+#pragma omp parallel shared(A, B)
         {
             relax();
             resid();
@@ -60,19 +59,16 @@ void relax() {
 void resid() {
 #pragma omp for schedule(static)
     for (i = 1; i <= N - 2; i++) {
-        double l_eps = 0.;
+        double l_eps = 0;
         for (j = 1; j <= N - 2; j++) {
-            double e;
-            e = fabs(A[i][j] - B[i][j]);
-            A[i][j] = B[i][j];
-            l_eps = Max(l_eps, e);
+                double e;
+                e = fabs(A[i][j] - B[i][j]);
+                A[i][j] = B[i][j];
+                l_eps = Max(l_eps, e);
         }
-        eps_errors[i] = l_eps;
-    }
-#pragma omp master
-    {
-        for (i = 1; i <= N - 2; i++) {
-            eps = Max(eps, eps_errors[i]);
+#pragma omp critical
+        {
+            eps = Max(l_eps, eps);
         }
     }
 }
