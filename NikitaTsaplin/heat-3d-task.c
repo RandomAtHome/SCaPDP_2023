@@ -60,7 +60,7 @@ void kernel_heat_3d(int tsteps,
 
 #pragma omp parallel shared(A, B, n)
     {
-#pragma omp master
+#pragma omp single
         {
             for (t = 1; t <= TSTEPS; t++) {
 #pragma omp taskloop private(i, j, k)
