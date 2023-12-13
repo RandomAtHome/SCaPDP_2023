@@ -6,7 +6,7 @@ import json
 import subprocess
 
 # initial params
-n_tr = 3
+n_tr = 5
 prog_names = ["heat-3d-for", "heat-3d-task"]
 compile_prefixes = [
     # "gcc -fopenmp -std=c99",

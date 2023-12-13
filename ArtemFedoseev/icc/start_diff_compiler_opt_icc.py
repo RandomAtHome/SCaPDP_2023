@@ -6,7 +6,7 @@ import json
 import subprocess
 
 # initial params
-n_tr = 3
+n_tr = 5
 prog_names = ["var11_for", "var11_task"]
 compile_prefixes = [
     # "gcc -fopenmp -std=c99",
