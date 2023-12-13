@@ -43,7 +43,6 @@ int main(int an, char **as) {
 
 void init() {
     for (int i = 0; i <= N - 1; i++) {
-        eps_errors[i] = 0;
         for (int j = 0; j <= N - 1; j++) {
             if (i == 0 || i == N - 1 || j == 0 || j == N - 1) A[i][j] = 0.;
             else A[i][j] = (1. + i + j);
@@ -53,8 +52,8 @@ void init() {
 
 void relax() {
 #pragma omp taskloop default(none) shared(A, B)
-    for (int j = 2; j <= N - 3; j++) {
-        for (int i = 2; i <= N - 3; i++) {
+    for (int i = 2; i <= N - 3; i++) {
+        for (int j = 2; j <= N - 3; j++) {
             B[i][j] = (A[i - 2][j] + A[i - 1][j] + A[i + 2][j] + A[i + 1][j] + A[i][j - 2] + A[i][j - 1] +
                        A[i][j + 2] +
                        A[i][j + 1]) / 8.;
@@ -87,8 +86,8 @@ void resid() {
 void verify() {
     double s;
     s = 0.;
-    for (int j = 0; j <= N - 1; j++) {
-        for (int i = 0; i <= N - 1; i++) {
+    for (int i = 0; i <= N - 1; i++) {
+        for (int j = 0; j <= N - 1; j++) {
             s = s + A[i][j] * (i + 1) * (j + 1) / (N * N);
         }
     }

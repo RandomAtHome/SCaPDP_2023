@@ -41,20 +41,20 @@ int main(int an, char **as) {
 }
 
 void init() {
-    for (j = 0; j <= N - 1; j++)
-        for (i = 0; i <= N - 1; i++) {
+    for (i = 0; i <= N - 1; i++) {
+        for (j = 0; j <= N - 1; j++)
             if (i == 0 || i == N - 1 || j == 0 || j == N - 1) A[i][j] = 0.;
             else A[i][j] = (1. + i + j);
-        }
+    }
 }
 
 void relax() {
 #pragma omp for schedule(static) private(i, j)
-    for (j = 2; j <= N - 3; j++)
-        for (i = 2; i <= N - 3; i++) {
+    for (i = 2; i <= N - 3; i++) {
+        for (j = 2; j <= N - 3; j++)
             B[i][j] = (A[i - 2][j] + A[i - 1][j] + A[i + 2][j] + A[i + 1][j] + A[i][j - 2] + A[i][j - 1] + A[i][j + 2] +
                        A[i][j + 1]) / 8.;
-        }
+    }
 }
 
 void resid() {
@@ -80,9 +80,9 @@ void resid() {
 void verify() {
     double s;
     s = 0.;
-    for (j = 0; j <= N - 1; j++)
-        for (i = 0; i <= N - 1; i++) {
+    for (i = 0; i <= N - 1; i++) {
+        for (j = 0; j <= N - 1; j++)
             s = s + A[i][j] * (i + 1) * (j + 1) / (N * N);
-        }
+    }
 //    printf("  S = %f\n", s);
 }
