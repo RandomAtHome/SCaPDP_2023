@@ -5,7 +5,7 @@
 
 #define  Max(a, b) ((a)>(b)?(a):(b))
 
-#define N   ((1 << 10) + 2)
+#define N   ((1 << 12) + 2)
 const double maxeps = 0.1e-7;
 const int itmax = 100;
 double eps;
@@ -90,5 +90,5 @@ void verify() {
             s = s + A[i][j] * (i + 1) * (j + 1) / (N * N);
         }
     }
-    printf("  S = %f\n", s);
+//    printf("  S = %f\n", s);
 }
