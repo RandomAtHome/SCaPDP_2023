@@ -61,23 +61,18 @@ void relax() {
 }
 
 void resid() {
-#pragma omp taskgroup
-    {
-        for (int i = 1; i <= N - 2; i++) {
-#pragma omp task default(none) shared(eps, A, B) firstprivate(i)
-            {
-                double l_eps = 0;
-                for (int j = 1; j <= N - 2; j++) {
-                    double e;
-                    e = fabs(A[i][j] - B[i][j]);
-                    A[i][j] = B[i][j];
-                    l_eps = Max(l_eps, e);
-                }
+#pragma omp taskloop default(none) shared(A, B, eps)
+    for (int i = 1; i <= N - 2; i++) {
+        double l_eps = 0;
+        for (int j = 1; j <= N - 2; j++) {
+            double e;
+            e = fabs(A[i][j] - B[i][j]);
+            A[i][j] = B[i][j];
+            l_eps = Max(l_eps, e);
+        }
 #pragma omp critical
-                {
-                    eps = Max(eps, l_eps);
-                }
-            }
+        {
+            eps = Max(eps, l_eps);
         }
     }
 }
