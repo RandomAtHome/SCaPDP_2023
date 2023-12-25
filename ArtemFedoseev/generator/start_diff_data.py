@@ -30,7 +30,7 @@ compile_prefixes = [
                     # "pgcc -mp -O3",
                     ]
 data_sizes = ["((1<<10)+2)", "((1<<11)+2)", "((1<<12)+2)", "((1<<13)+2)"]
-num_threads = [1, 2, 4, 8]
+num_threads = [1, 2, 4, 8, 16]
 
 # store our pc env
 base_env = os.environ.copy()
