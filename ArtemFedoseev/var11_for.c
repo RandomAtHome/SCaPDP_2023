@@ -40,6 +40,7 @@ int main(int an, char **as) {
 }
 
 void init() {
+#pragma omp parallel for schedule(static) default(none) private(i, j) shared(A)
     for (i = 0; i <= N - 1; i++) {
         for (j = 0; j <= N - 1; j++)
             if (i == 0 || i == N - 1 || j == 0 || j == N - 1) A[i][j] = 0.;
@@ -57,19 +58,19 @@ void relax() {
 }
 
 void resid() {
+    double l_eps = 0; // thread-local variable, as we are in parallel section already
 #pragma omp for schedule(static)
     for (i = 1; i <= N - 2; i++) {
-        double l_eps = 0;
         for (j = 1; j <= N - 2; j++) {
                 double e;
                 e = fabs(A[i][j] - B[i][j]);
                 A[i][j] = B[i][j];
                 l_eps = Max(l_eps, e);
         }
+    }
 #pragma omp critical
-        {
-            eps = Max(l_eps, eps);
-        }
+    {
+        eps = Max(l_eps, eps);
     }
 }
 
