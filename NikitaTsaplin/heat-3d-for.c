@@ -26,11 +26,10 @@ static
 void init_array(int n,
                 double A[n][n][n],
                 double B[n][n][n]) {
-    int i, j, k;
-
-    for (i = 0; i < n; i++)
-        for (j = 0; j < n; j++)
-            for (k = 0; k < n; k++)
+#pragma omp parallel for schedule(static) default(none) shared(A, B, n)
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            for (int k = 0; k < n; k++)
                 A[i][j][k] = B[i][j][k] = (double) (i + j + (n - k)) * 10 / (n);
 }
 

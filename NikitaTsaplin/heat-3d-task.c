@@ -28,17 +28,18 @@ void init_array(int n,
                 double B[n][n][n]) {
     int i, j, k;
 
+#pragma omp taskloop private(i, j, k)
     for (i = 0; i < n; i++)
         for (j = 0; j < n; j++)
             for (k = 0; k < n; k++)
                 A[i][j][k] = B[i][j][k] = (double) (i + j + (n - k)) * 10 / (n);
 }
 
+
 static
 void print_array(int n,
                  double A[n][n][n]) {
     int i, j, k;
-
     fprintf(stderr, "==BEGIN DUMP_ARRAYS==\n");
     fprintf(stderr, "begin dump: %s", "A");
     for (i = 0; i < n; i++)
@@ -57,33 +58,26 @@ void kernel_heat_3d(int tsteps,
                     double A[n][n][n],
                     double B[n][n][n]) {
     int t, i, j, k;
-
-#pragma omp parallel shared(A, B, n)
-    {
-#pragma omp single
-        {
-            for (t = 1; t <= TSTEPS; t++) {
+    for (t = 1; t <= TSTEPS; t++) {
 #pragma omp taskloop private(i, j, k)
-                for (i = 1; i < n - 1; i++) {
-                    for (j = 1; j < n - 1; j++) {
-                        for (k = 1; k < n - 1; k++) {
-                            B[i][j][k] = 0.125 * (A[i + 1][j][k] - 2.0 * A[i][j][k] + A[i - 1][j][k])
-                                         + 0.125 * (A[i][j + 1][k] - 2.0 * A[i][j][k] + A[i][j - 1][k])
-                                         + 0.125 * (A[i][j][k + 1] - 2.0 * A[i][j][k] + A[i][j][k - 1])
-                                         + A[i][j][k];
-                        }
-                    }
+        for (i = 1; i < n - 1; i++) {
+            for (j = 1; j < n - 1; j++) {
+                for (k = 1; k < n - 1; k++) {
+                    B[i][j][k] = 0.125 * (A[i + 1][j][k] - 2.0 * A[i][j][k] + A[i - 1][j][k])
+                                 + 0.125 * (A[i][j + 1][k] - 2.0 * A[i][j][k] + A[i][j - 1][k])
+                                 + 0.125 * (A[i][j][k + 1] - 2.0 * A[i][j][k] + A[i][j][k - 1])
+                                 + A[i][j][k];
                 }
+            }
+        }
 #pragma omp taskloop private(i, j, k)
-                for (i = 1; i < n - 1; i++) {
-                    for (j = 1; j < n - 1; j++) {
-                        for (k = 1; k < n - 1; k++) {
-                            A[i][j][k] = 0.125 * (B[i + 1][j][k] - 2.0 * B[i][j][k] + B[i - 1][j][k])
-                                         + 0.125 * (B[i][j + 1][k] - 2.0 * B[i][j][k] + B[i][j - 1][k])
-                                         + 0.125 * (B[i][j][k + 1] - 2.0 * B[i][j][k] + B[i][j][k - 1])
-                                         + B[i][j][k];
-                        }
-                    }
+        for (i = 1; i < n - 1; i++) {
+            for (j = 1; j < n - 1; j++) {
+                for (k = 1; k < n - 1; k++) {
+                    A[i][j][k] = 0.125 * (B[i + 1][j][k] - 2.0 * B[i][j][k] + B[i - 1][j][k])
+                                 + 0.125 * (B[i][j + 1][k] - 2.0 * B[i][j][k] + B[i][j - 1][k])
+                                 + 0.125 * (B[i][j][k + 1] - 2.0 * B[i][j][k] + B[i][j][k - 1])
+                                 + B[i][j][k];
                 }
             }
         }
@@ -101,13 +95,19 @@ int main(int argc, char **argv) {
     double (*B)[n][n][n];
     B = (double (*)[n][n][n]) malloc((n) * (n) * (n) * sizeof(double));
 
-    init_array(n, *A, *B);
+#pragma omp parallel shared(A, B, n)
+    {
+#pragma omp single
+        {
+            init_array(n, *A, *B);
 
-    bench_timer_start();
+            bench_timer_start();
 
-    kernel_heat_3d(tsteps, n, *A, *B);
+            kernel_heat_3d(tsteps, n, *A, *B);
 
-    bench_timer_stop();
+            bench_timer_stop();
+        }
+    }
     bench_timer_print();
 
     if (argc > 42 && !strcmp(argv[0], "")) print_array(n, *A);
