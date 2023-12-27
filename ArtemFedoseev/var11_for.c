@@ -81,5 +81,5 @@ void verify() {
         for (j = 0; j <= N - 1; j++)
             s = s + A[i][j] * (i + 1) * (j + 1) / (N * N);
     }
-//    printf("  S = %f\n", s);
+    printf("  S = %f\n", s);
 }
