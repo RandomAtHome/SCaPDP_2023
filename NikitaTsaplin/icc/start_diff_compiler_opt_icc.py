@@ -18,7 +18,7 @@ compiler_optimizers = ["O0", "O1", "O2", "O3"]
 
 # store our pc env
 base_env = os.environ.copy()
-base_env["OMP_NUM_THREADS"] = "8"
+base_env["OMP_NUM_THREADS"] = "16"
 
 # data storage
 data_dict = {}

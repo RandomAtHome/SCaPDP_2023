@@ -8,7 +8,6 @@
 #define N   ((1 << 12) + 2)
 double maxeps = 0.1e-7;
 int itmax = 100;
-int i, j, k;
 double eps;
 double A[N][N], B[N][N];
 
@@ -40,18 +39,18 @@ int main(int an, char **as) {
 }
 
 void init() {
-#pragma omp parallel for schedule(static) default(none) private(i, j) shared(A)
-    for (i = 0; i <= N - 1; i++) {
-        for (j = 0; j <= N - 1; j++)
+#pragma omp parallel for schedule(static) default(none) shared(A)
+    for (int i = 0; i <= N - 1; i++) {
+        for (int j = 0; j <= N - 1; j++)
             if (i == 0 || i == N - 1 || j == 0 || j == N - 1) A[i][j] = 0.;
             else A[i][j] = (1. + i + j);
     }
 }
 
 void relax() {
-#pragma omp for schedule(static) private(i, j)
-    for (i = 2; i <= N - 3; i++) {
-        for (j = 2; j <= N - 3; j++)
+#pragma omp for schedule(static)
+    for (int i = 2; i <= N - 3; i++) {
+        for (int j = 2; j <= N - 3; j++)
             B[i][j] = (A[i - 2][j] + A[i - 1][j] + A[i + 2][j] + A[i + 1][j] + A[i][j - 2] + A[i][j - 1] + A[i][j + 2] +
                        A[i][j + 1]) / 8.;
     }
@@ -60,8 +59,8 @@ void relax() {
 void resid() {
     double l_eps = 0; // thread-local variable, as we are in parallel section already
 #pragma omp for schedule(static)
-    for (i = 1; i <= N - 2; i++) {
-        for (j = 1; j <= N - 2; j++) {
+    for (int i = 1; i <= N - 2; i++) {
+        for (int j = 1; j <= N - 2; j++) {
                 double e;
                 e = fabs(A[i][j] - B[i][j]);
                 A[i][j] = B[i][j];
@@ -77,8 +76,8 @@ void resid() {
 void verify() {
     double s;
     s = 0.;
-    for (i = 0; i <= N - 1; i++) {
-        for (j = 0; j <= N - 1; j++)
+    for (int i = 0; i <= N - 1; i++) {
+        for (int j = 0; j <= N - 1; j++)
             s = s + A[i][j] * (i + 1) * (j + 1) / (N * N);
     }
     printf("  S = %f\n", s);

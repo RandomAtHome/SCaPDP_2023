@@ -19,7 +19,7 @@ data_sizes = ["MINI_DATASET",
               "MEDIUM_DATASET",
               "LARGE_DATASET",
               "EXTRALARGE_DATASET"]
-num_threads = [1, 2, 4, 8]
+num_threads = [1, 2, 4, 8, 16]
 
 # store our pc env
 base_env = os.environ.copy()

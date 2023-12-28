@@ -1,0 +1,31 @@
+{
+  "heat-3d-acc": {
+    "pgcc": {
+      "MINI_DATASET": {
+        "tesla": 0.033384399999999995,
+        "multicore": 0.0071868,
+        "host": 0.0008354
+      },
+      "SMALL_DATASET": {
+        "tesla": 0.035049000000000004,
+        "multicore": 0.011932400000000001,
+        "host": 0.0113754
+      },
+      "MEDIUM_DATASET": {
+        "tesla": 0.053870799999999996,
+        "multicore": 0.046512399999999995,
+        "host": 0.1101772
+      },
+      "LARGE_DATASET": {
+        "tesla": 0.5577074,
+        "multicore": 0.9863256,
+        "host": 3.533245
+      },
+      "EXTRALARGE_DATASET": {
+        "tesla": 2.2730705999999996,
+        "multicore": 15.923499999999999,
+        "host": 29.418411400000004
+      }
+    }
+  }
+}
