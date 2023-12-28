@@ -26,24 +26,25 @@ static
 void init_array(int n,
                 double A[n][n][n],
                 double B[n][n][n]) {
-    int i, j, k;
 
-    for (i = 0; i < n; i++)
-        for (j = 0; j < n; j++)
-            for (k = 0; k < n; k++)
-                A[i][j][k] = B[i][j][k] = (double) (i + j + (n - k)) * 10 / (n);
+#pragma acc parallel copyin(n) loop collapse(3)
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            for (int k = 0; k < n; k++) {
+                A[i][j][k] = (double) (i + j + (n - k)) * 10 / (n);
+                B[i][j][k] = (double) (i + j + (n - k)) * 10 / (n);
+            }
 }
 
 static
 void print_array(int n,
                  double A[n][n][n]) {
-    int i, j, k;
 
     fprintf(stderr, "==BEGIN DUMP_ARRAYS==\n");
     fprintf(stderr, "begin dump: %s", "A");
-    for (i = 0; i < n; i++)
-        for (j = 0; j < n; j++)
-            for (k = 0; k < n; k++) {
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            for (int k = 0; k < n; k++) {
                 if ((i * n * n + j * n + k) % 20 == 0) fprintf(stderr, "\n");
                 fprintf(stderr, "%0.2lf ", A[i][j][k]);
             }
@@ -53,16 +54,14 @@ void print_array(int n,
 
 static
 void kernel_heat_3d(int tsteps,
-                    int n,
+                    const int n,
                     double A[n][n][n],
                     double B[n][n][n]) {
-    int t, i, j, k;
-
-    for (t = 1; t <= TSTEPS; t++) {
-#pragma acc parallel loop
-        for (i = 1; i < n - 1; i++) {
-            for (j = 1; j < n - 1; j++) {
-                for (k = 1; k < n - 1; k++) {
+    for (int t = 1; t <= TSTEPS; t++) {
+#pragma acc parallel loop collapse(3)
+        for (int i = 1; i < n - 1; i++) {
+            for (int j = 1; j < n - 1; j++) {
+                for (int k = 1; k < n - 1; k++) {
                     B[i][j][k] = 0.125 * (A[i + 1][j][k] - 2.0 * A[i][j][k] + A[i - 1][j][k])
                                  + 0.125 * (A[i][j + 1][k] - 2.0 * A[i][j][k] + A[i][j - 1][k])
                                  + 0.125 * (A[i][j][k + 1] - 2.0 * A[i][j][k] + A[i][j][k - 1])
@@ -70,10 +69,10 @@ void kernel_heat_3d(int tsteps,
                 }
             }
         }
-#pragma acc parallel loop
-        for (i = 1; i < n - 1; i++) {
-            for (j = 1; j < n - 1; j++) {
-                for (k = 1; k < n - 1; k++) {
+#pragma acc parallel loop collapse(3)
+        for (int i = 1; i < n - 1; i++) {
+            for (int j = 1; j < n - 1; j++) {
+                for (int k = 1; k < n - 1; k++) {
                     A[i][j][k] = 0.125 * (B[i + 1][j][k] - 2.0 * B[i][j][k] + B[i - 1][j][k])
                                  + 0.125 * (B[i][j + 1][k] - 2.0 * B[i][j][k] + B[i][j - 1][k])
                                  + 0.125 * (B[i][j][k + 1] - 2.0 * B[i][j][k] + B[i][j][k - 1])
@@ -82,7 +81,6 @@ void kernel_heat_3d(int tsteps,
             }
         }
     }
-
 }
 
 
@@ -96,12 +94,14 @@ int main(int argc, char **argv) {
     double (*B)[n][n][n];
     B = (double (*)[n][n][n]) malloc((n) * (n) * (n) * sizeof(double));
 
-    init_array(n, *A, *B);
+#pragma acc data copyin(n) copyout(A[0:1][0:n][0:n][0:n]) create(B[0:1][0:N][0:N][0:n])
+    {
+        init_array(n, *A, *B);
 
-    bench_timer_start();
+        bench_timer_start();
 
-    kernel_heat_3d(tsteps, n, *A, *B);
-
+        kernel_heat_3d(tsteps, n, *A, *B);
+    }
     bench_timer_stop();
     bench_timer_print();
 
