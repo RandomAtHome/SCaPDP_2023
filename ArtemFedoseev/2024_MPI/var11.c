@@ -13,7 +13,7 @@ double A [N][N],  B [N][N];
 void relax();
 void resid();
 void init();
-void verify(); 
+void verify();
 
 int main(int an, char **as)
 {
@@ -32,14 +32,14 @@ int main(int an, char **as)
 }
 
 void init()
-{ 
+{
 	for(j=0; j<=N-1; j++)
 	for(i=0; i<=N-1; i++)
 	{
 		if(i==0 || i==N-1 || j==0 || j==N-1) A[i][j]= 0.;
 		else A[i][j]= ( 1. + i + j ) ;
 	}
-} 
+}
 
 void relax()
 {
@@ -51,13 +51,13 @@ void relax()
 }
 
 void resid()
-{ 
+{
 	for(j=1; j<=N-2; j++)
 	for(i=1; i<=N-2; i++)
 	{
 		double e;
-		e = fabs(A[i][j] - B[i][j]);         
-		A[i][j] = B[i][j]; 
+		e = fabs(A[i][j] - B[i][j]);
+		A[i][j] = B[i][j];
 		eps = Max(eps,e);
 	}
 }
