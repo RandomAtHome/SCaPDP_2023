@@ -34,6 +34,7 @@ int main(int an, char **as) {
         MPI_Finalize();
         return 1;
     }
+    MPI_Barrier(MPI_COMM_WORLD);
     double time = MPI_Wtime();
     double (*A)[N];
     double (*B)[N];
@@ -48,8 +49,9 @@ int main(int an, char **as) {
         if (eps < maxeps) break;
     }
     verify(A);
+    double end_time = MPI_Wtime(); // в verify групповая операция и неявный барьер
     if (RANK == 0) {
-        printf("%lf\n", MPI_Wtime() - time);
+        printf("%lf\n", end_time - time);
     }
     free(A);
     free(B);
