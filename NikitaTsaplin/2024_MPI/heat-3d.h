@@ -4,10 +4,10 @@
 #define LARGE_DATASET
 # endif
 # if !defined(TSTEPS) && !defined(N)
-# ifdef MINI_DATASET
-#define TSTEPS 1000
-#define N 10
-# endif
+//# ifdef MINI_DATASET
+//#define TSTEPS 1000
+//#define N 10
+//# endif
 # ifdef SMALL_DATASET
 #define TSTEPS 1000
 #define N 20

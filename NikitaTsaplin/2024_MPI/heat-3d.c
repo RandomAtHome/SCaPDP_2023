@@ -94,6 +94,21 @@ void kernel_heat_3d(int tsteps,
 
 }
 
+static
+void validate(int n,
+              double A[n][n][n]) {
+
+    double hash = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            for (int k = 0; k < n; k++) {
+                hash += A[i][j][k] / (n * n);
+            }
+        }
+    }
+    printf("%lf\n", hash);
+}
+
 
 int main(int argc, char** argv)
 {
@@ -115,6 +130,7 @@ int main(int argc, char** argv)
 
   if (argc > 42 && ! strcmp(argv[0], "")) print_array(n, *A);
 
+  validate(n, *A);
   free((void*)A);
   free((void*)B);
 
