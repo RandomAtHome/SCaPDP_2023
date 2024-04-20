@@ -59,7 +59,7 @@ void validate(int n,
     }
     MPI_Reduce(&hash, &total_hash, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (RANK == 0) {
-        printf("%lf\n", total_hash);
+        printf("Hash is %lf\n", total_hash);
     }
 }
 
