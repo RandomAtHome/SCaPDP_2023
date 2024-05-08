@@ -38,6 +38,7 @@ void init_array(int n) {
             for (int k = 0; k < n; k++)
                 loc_a[j][k] = loc_b[j][k] = (double) (i + j + (n - k)) * 10 / (n);
         }
+    upc_barrier;
 }
 
 static
