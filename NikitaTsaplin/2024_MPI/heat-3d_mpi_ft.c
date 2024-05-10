@@ -7,6 +7,17 @@
 
 double bench_t_start = 0, bench_t_end = 0;
 
+static
+double rtclock()
+{
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday (&Tp, NULL);
+    if (stat != 0)
+        printf ("Error return from gettimeofday: %d", stat);
+    return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
+}
+
 const char filename[] = "save.dat";
 MPI_Comm COMM = MPI_COMM_NULL;
 
@@ -73,7 +84,7 @@ int MPIX_Comm_replace(MPI_Comm comm, MPI_Comm* newcomm) {
         }
     }
 
-    rc = MPI_Intercomm_merge(icomm, 1, &mcomm);
+    rc = MPI_Intercomm_merge(icomm, comm != MPI_COMM_NULL, &mcomm);
     rflag = flag = (MPI_SUCCESS == rc);
     MPIX_Comm_agree(scomm, &flag);
     if (MPI_COMM_WORLD != scomm) MPI_Comm_free(&scomm);
@@ -100,11 +111,14 @@ int MPIX_Comm_replace(MPI_Comm comm, MPI_Comm* newcomm) {
     return MPI_SUCCESS;
 }
 
-/**
- * Универсальный обработчик ошибок, который ужимает коммуникатор, исключая упавшие процессы.
- */
+int Fixup_Comm(MPI_Comm comm, MPI_Comm* newcomm) {
+    MPIX_Comm_replace(comm, newcomm);
+    MPI_Allreduce(MPI_IN_PLACE, &bench_t_start, 1, MPI_DOUBLE, MPI_MIN, *newcomm);
+    return MPI_SUCCESS;
+}
+
 static void verbose_errhandler(MPI_Comm* pcomm, int* perr, ...) {
-    // взято с https://github.com/ICLDisco/ulfm-testing/blob/master/tutorial/02.err_handler.c
+    // https://github.com/ICLDisco/ulfm-testing/blob/master/tutorial/02.err_handler.c
     MPI_Comm comm = *pcomm;
     int err = *perr;
     char errstr[MPI_MAX_ERROR_STRING];
@@ -140,11 +154,11 @@ static void verbose_errhandler(MPI_Comm* pcomm, int* perr, ...) {
             free(ranks_gc);
             MPIX_Comm_revoke(comm);
             printf("I (rank %d of %d) reinited comm\n", rank, size);
-            MPIX_Comm_replace(comm, &newcomm);
+            Fixup_Comm(comm, &newcomm);
             break;
         case MPIX_ERR_REVOKED:
             printf("I (rank %d of %d) was told to reinit comm\n", rank, size);
-            MPIX_Comm_replace(comm, &newcomm);
+            Fixup_Comm(comm, &newcomm);
             break;
         default:
             printf("Unknown error at %d / %d\n%s\n", rank, size, errstr);
@@ -271,8 +285,9 @@ void do_computation(int n,
     int is_lowest = (cell_down == MPI_PROC_NULL ? 1 : 0);
     ///
     /// non-border
+    // FIXME: надо доделать случайное, но не слишком частое, убийство процессов
     if (IS_VICTIM) {
-        printf("Fare thee well!\n");
+        printf("Rank %d says 'Fare thee well!'\n", RANK);
         raise(SIGKILL);
     }
     for (int i = 1 + 1; i < halo_height - (1 + 1); i++) {
@@ -335,6 +350,7 @@ void kernel_heat_3d(int cur_step,
 int main(int argc, char** argv) {
     MPI_Comm parent; /* a parent comm for the work, w/o the spares */
     gargv = argv;
+    srand(time(NULL));
     MPI_Init(&argc, &argv);
     MPI_Comm_dup(MPI_COMM_WORLD, &COMM);
     /* Am I a spare ? */
@@ -343,11 +359,12 @@ int main(int argc, char** argv) {
         /* First run: Let's create an initial parent, a copy of MPI_COMM_WORLD */
         MPI_Comm_dup(MPI_COMM_WORLD, &COMM);
         MPI_Barrier(COMM);
-        bench_t_start = MPI_Wtime();
+        bench_t_start = rtclock();
     } else {
         /* I am a spare, lets get the repaired parent */
         printf("Spare was born!\n");
-        MPIX_Comm_replace(MPI_COMM_NULL, &COMM);
+        Fixup_Comm(MPI_COMM_NULL, &COMM);
+        bench_t_start = rtclock();
         need_restore = 2;
     }
 
@@ -397,7 +414,7 @@ int main(int argc, char** argv) {
     kernel_heat_3d(curr_step, n, *A, *B);
 
     MPI_Barrier(COMM);
-    bench_t_end = MPI_Wtime();
+    bench_t_end = rtclock(); // MPI_Wtime starts counting since first call, so handmade timers
 
     validate(n, *A);
     if (RANK == 0) {
