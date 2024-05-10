@@ -1,11 +1,11 @@
 #include <math.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <mpi.h>
 #include <mpi-ext.h>
-#include <malloc.h>
-#include <signal.h>
 #include <setjmp.h>
+#include <time.h>
+#include <stdlib.h>
+#include <signal.h>
 
 const int N = ((1 << 10) + 2);
 const double maxeps = 0.1e-7;
@@ -14,9 +14,10 @@ const int border_size = 2;
 
 //
 const char ckpt_name[] = "checkpoint.dat";
-const int ckpt_period = 5;
+const int ckpt_period = 20;
 int have_failed = 0;
 jmp_buf recv_point;
+int break_iteration = 0;
 //
 MPI_Comm GLOBAL_COMM;
 int NET_SIZE, RANK;
@@ -27,6 +28,9 @@ double eps;
 int height, full_height;
 int global_i_offset = 0;
 
+/**
+ * Универсальный обработчик ошибок, который ужимает коммуникатор, исключая упавшие процессы.
+ */
 static void verbose_errhandler(MPI_Comm* pcomm, int* perr, ...) {
     // взято с https://github.com/ICLDisco/ulfm-testing/blob/master/tutorial/02.err_handler.c
     MPI_Comm comm = *pcomm;
@@ -36,43 +40,39 @@ static void verbose_errhandler(MPI_Comm* pcomm, int* perr, ...) {
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     MPI_Group group_c, group_f;
-    int *ranks_gc, *ranks_gf;
+    int* ranks_gc, * ranks_gf;
 
     MPI_Comm newcomm = NULL;
     MPI_Error_class(err, &eclass);
     MPI_Error_string(err, errstr, &len);
     switch (eclass) {
         case MPIX_ERR_PROC_FAILED:
-            /* We use a combination of 'ack/get_acked' to obtain the list of
-             * failed processes (as seen by the local rank).
-             */
-            MPIX_Comm_failure_ack(comm);
-            MPIX_Comm_failure_get_acked(comm, &group_f);
-            MPI_Group_size(group_f, &nf);
+            MPIX_Comm_get_failed(comm, &group_f);
+            MPIX_Comm_ack_failed(comm, NET_SIZE, &nf);
             printf("Rank %d / %d: Notified of error %s. %d found dead: { ",
                    rank, size, errstr, nf);
 
-            /* We use 'translate_ranks' to obtain the ranks of failed procs
-             * in the input communicator 'comm'.
-             */
-            ranks_gf = (int*)malloc(nf * sizeof(int));
-            ranks_gc = (int*)malloc(nf * sizeof(int));
+            ranks_gf = (int*) malloc(nf * sizeof(int));
+            ranks_gc = (int*) malloc(nf * sizeof(int));
             MPI_Comm_group(comm, &group_c);
-            for(int i = 0; i < nf; i++) {
+            for (int i = 0; i < nf; i++) {
                 ranks_gf[i] = i;
             }
             MPI_Group_translate_ranks(group_f, nf, ranks_gf,
                                       group_c, ranks_gc);
-            for(int i = 0; i < nf; i++) {
+            for (int i = 0; i < nf; i++) {
                 printf("%d ", ranks_gc[i]);
             }
             printf("}\n");
-            free(ranks_gf); free(ranks_gc);
+            free(ranks_gf);
+            free(ranks_gc);
             MPIX_Comm_revoke(comm);
-            // we don't reraise ERR_REVOKED on ourselves, do we?
+            printf("I (rank %d of %d) was shrinked\n", rank, size);
+            MPIX_Comm_shrink(comm, &newcomm);
+            break;
         case MPIX_ERR_REVOKED:
             // shrink communicator
-            printf("I (rank %d of %d) shrinked\n", rank, size);
+            printf("I (rank %d of %d) was shrinked\n", rank, size);
             MPIX_Comm_shrink(comm, &newcomm);
             break;
         default:
@@ -86,6 +86,7 @@ static void verbose_errhandler(MPI_Comm* pcomm, int* perr, ...) {
     have_failed = 1;
     longjmp(recv_point, 1);
 }
+
 ////
 void relax(double (* A)[N], double (* B)[N]);
 
@@ -97,6 +98,19 @@ void init(double (* A)[N]);
 
 void verify(double (* A)[N]);
 
+/**
+ * В начала запуска программы для каждого процесса определяем, через сколько итераций, будучи вторым,
+ * он погибнет.
+ */
+void fault_countdown() {
+    if (RANK == 1 && --break_iteration == 0) {
+        printf("%d imitates failure and dies\n", RANK);
+        raise(SIGKILL);
+    }
+}
+/**
+ * Записываем итерацию и массив данных
+ */
 void create_checkpoint(double (* A)[N], int it) {
     MPI_File fh;
     MPI_File_open(GLOBAL_COMM, ckpt_name, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
@@ -110,7 +124,7 @@ void create_checkpoint(double (* A)[N], int it) {
 }
 
 /**
- *
+ * Пытаемся восстановиться из чекпоинта, если он есть, иначе начинаем вычисления с нуля.
  * */
 void recover(double (* A)[N], int* pit) {
     MPI_File fh;
@@ -134,15 +148,12 @@ int main(int an, char** as) {
     MPI_Errhandler errhandler;
     MPI_Comm_size(MPI_COMM_WORLD, &NET_SIZE);
     MPI_Comm_rank(MPI_COMM_WORLD, &RANK);
-    if (NET_SIZE % 2 && NET_SIZE != 1) {
-        printf("Proc. number should be multiple of 2!\nGot: %d\n", NET_SIZE);
-        MPI_Finalize();
-        return 1;
-    }
     MPI_Comm_create_errhandler(verbose_errhandler, &errhandler);
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, errhandler);
     MPI_Comm_dup(MPI_COMM_WORLD, &GLOBAL_COMM);
     //
+    srand(time(NULL));
+    break_iteration = (rand() % (itmax / NET_SIZE)) + 2 * (itmax / NET_SIZE); // делаем так, чтобы было достаточно падений, но программа завершилась
     MPI_Barrier(GLOBAL_COMM);
     double time = MPI_Wtime();
     double (* A)[N] = NULL;
@@ -151,15 +162,19 @@ int main(int an, char** as) {
     init(A);
     setjmp(recv_point);
     for (int it = 1; it <= itmax; it++) {
+        if (it % ckpt_period == 0 && !have_failed && it < itmax) {
+            create_checkpoint(A, it);
+            if (RANK == 0) {
+                printf("Created checkpoint\n");
+            }
+        }
         if (have_failed) {
             allocate(&A, &B);
             recover(A, &it);
             have_failed = 0;
+//            printf("[%d] Done restore\n", RANK);
         }
         eps = 0.;
-        if (it % ckpt_period == 0) {
-            create_checkpoint(A, it);
-        }
         relax(A, B);
         resid(A, B);
         if (RANK == 0) {
@@ -196,7 +211,7 @@ void allocate(double (** A)[N], double (** B)[N]) {
         free(*B);
     }
     *A = malloc((height + 2 * border_size) * N * sizeof(double));
-    *B = malloc(height * N * sizeof(double));
+    *B = calloc(height * N, sizeof(double)); // на самом деле мы не все обходим ячейки
 }
 
 void init(double (* A)[N]) {
@@ -222,13 +237,11 @@ void relax(double (* A)[N], double (* B)[N]) {
     // setup sends and receives
     MPI_Isend(&A[border_size][0], border_size * N, MPI_DOUBLE, cell_up, 0, GLOBAL_COMM, &out[0]);
     MPI_Irecv(&A[0][0], border_size * N, MPI_DOUBLE, cell_up, 0, GLOBAL_COMM, &in[0]);
-    if (RANK == 2) {
-        printf("Off I go!\n");
-        raise(SIGKILL);
-    }
     MPI_Isend(&(A[full_height - 2 * border_size][0]), border_size * N, MPI_DOUBLE, cell_down, 0, GLOBAL_COMM,
               &out[1]);
     MPI_Irecv(&A[full_height - border_size][0], border_size * N, MPI_DOUBLE, cell_down, 0, GLOBAL_COMM, &in[1]);
+    // INJECTED FAULT
+    fault_countdown();
     // do non-border stuff
     for (int i = 2 * border_size; i < full_height - (2 * border_size); i++) {
         for (int j = 2; j < N - 2; j++) {
