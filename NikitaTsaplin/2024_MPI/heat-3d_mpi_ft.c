@@ -194,7 +194,7 @@ void init_array(int n,
  * */
 void create_checkpoint(double A[halo_height][N][N], int t) {
     if (RANK == 0) {
-        printf("Made a checkpoint!\n");
+//        printf("Made a checkpoint!\n");
     }
     MPI_File fh;
     MPI_Barrier(COMM);
@@ -283,13 +283,6 @@ void do_computation(int n,
     MPI_Irecv(&src[halo_height - 1][0][0], n * n, MPI_DOUBLE, cell_down, 0, COMM, &in[1]);
     int is_upmost = (cell_up == MPI_PROC_NULL ? 1 : 0);
     int is_lowest = (cell_down == MPI_PROC_NULL ? 1 : 0);
-    ///
-    /// non-border
-    // FIXME: надо доделать случайное, но не слишком частое, убийство процессов
-    if (IS_VICTIM) {
-        printf("Rank %d says 'Fare thee well!'\n", RANK);
-        raise(SIGKILL);
-    }
     for (int i = 1 + 1; i < halo_height - (1 + 1); i++) {
         for (int j = 1; j < n - 1; j++) {
             for (int k = 1; k < n - 1; k++) {
@@ -339,9 +332,15 @@ void kernel_heat_3d(int cur_step,
                 printf("I am at %d\n", t);
             }
             create_checkpoint(A, t);
-            validate(n, A);
+//            validate(n, A);
         }
         do_computation(n, A, B);
+        ///
+        /// non-border
+        if (IS_VICTIM && t == TSTEPS / 2) {
+            printf("Rank %d says 'Fare thee well!'\n", RANK);
+            raise(SIGKILL);
+        }
         do_computation(n, B, A);
     }
 }
@@ -370,7 +369,7 @@ int main(int argc, char** argv) {
 
     MPI_Comm_size(COMM, &NET_SIZE);
     MPI_Comm_rank(COMM, &RANK);
-    if (need_restore == 0 && RANK == NET_SIZE - 1 && RANK) {
+    if (need_restore == 0 && (RANK & 1) && RANK) {
         IS_VICTIM = 1;
     }
     MPI_Errhandler errhandler;
@@ -422,6 +421,7 @@ int main(int argc, char** argv) {
     }
     free((void*) A);
     free((void*) B);
+    printf("I am process %d in the end\n", RANK);
     MPI_Finalize();
     return 0;
 }

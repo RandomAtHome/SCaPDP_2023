@@ -189,6 +189,7 @@ int main(int an, char** as) {
     }
     free(A);
     free(B);
+    printf("Process %d alive\n", RANK);
     MPI_Finalize();
     return 0;
 }
